@@ -51,12 +51,15 @@ server_stats = {
 }
 
 def initialize_models():
-    """Initialize Whisper models on GPU."""
+    """Initialize Whisper models with GPU fallback to CPU."""
+    global server_stats
+    
     try:
+        # Try GPU first, fallback to CPU if cuDNN issues
         device = "cuda" if torch.cuda.is_available() else "cpu"
         compute_type = "float16" if device == "cuda" else "int8"
         
-        logger.info(f"Initializing models on {device}")
+        logger.info(f"Attempting to initialize models on {device}")
         logger.info(f"GPU: {server_stats['gpu_name']}")
         
         # Load multiple model sizes for different speed/accuracy tradeoffs
@@ -67,22 +70,49 @@ def initialize_models():
             "medium": {"size": "medium", "description": "High accuracy (slower)"}
         }
         
+        # Try loading models with GPU first
+        gpu_failed = False
         for name, config in model_configs.items():
             try:
-                logger.info(f"Loading {name} model ({config['description']})...")
+                logger.info(f"Loading {name} model ({config['description']}) on {device}...")
                 models[name] = WhisperModel(
                     config["size"], 
                     device=device, 
                     compute_type=compute_type
                 )
-                logger.info(f"✅ {name} model loaded successfully")
+                logger.info(f"✅ {name} model loaded successfully on {device}")
             except Exception as e:
-                logger.error(f"❌ Failed to load {name} model: {e}")
+                logger.error(f"❌ Failed to load {name} model on {device}: {e}")
+                if device == "cuda" and "cudnn" in str(e).lower():
+                    logger.warning("cuDNN compatibility issue detected, will try CPU fallback")
+                    gpu_failed = True
+                    break
+        
+        # If GPU failed due to cuDNN, retry with CPU
+        if gpu_failed and device == "cuda":
+            logger.info("🔄 Falling back to CPU due to GPU/cuDNN issues...")
+            models.clear()  # Clear any partially loaded models
+            device = "cpu"
+            compute_type = "int8"
+            server_stats["gpu_available"] = False
+            
+            for name, config in model_configs.items():
+                try:
+                    logger.info(f"Loading {name} model ({config['description']}) on CPU...")
+                    models[name] = WhisperModel(
+                        config["size"], 
+                        device=device, 
+                        compute_type=compute_type
+                    )
+                    logger.info(f"✅ {name} model loaded successfully on CPU")
+                except Exception as e:
+                    logger.error(f"❌ Failed to load {name} model on CPU: {e}")
         
         if not models:
-            raise Exception("No models could be loaded")
+            raise Exception("No models could be loaded on either GPU or CPU")
             
-        logger.info(f"🚀 Server ready with {len(models)} models")
+        final_device = "CPU" if device == "cpu" else "GPU"
+        logger.info(f"🚀 Server ready with {len(models)} models on {final_device}")
         
     except Exception as e:
         logger.error(f"Failed to initialize models: {e}")
@@ -254,16 +284,51 @@ async def transcribe_audio(
             
             logger.info(f"Transcribing with {model} model, language: {language}")
             
-            segments, info = whisper_model.transcribe(
-                tmp_file_path,
-                language=language,
-                task=task,
-                beam_size=5 if model in ["small", "medium"] else 3,  # Better quality for larger models
-                temperature=0.0,  # Deterministic
-                compression_ratio_threshold=2.4,
-                no_speech_threshold=0.6,
-                condition_on_previous_text=False
-            )
+            try:
+                segments, info = whisper_model.transcribe(
+                    tmp_file_path,
+                    language=language,
+                    task=task,
+                    beam_size=5 if model in ["small", "medium"] else 3,  # Better quality for larger models
+                    temperature=0.0,  # Deterministic
+                    compression_ratio_threshold=2.4,
+                    no_speech_threshold=0.6,
+                    condition_on_previous_text=False
+                )
+            except Exception as transcribe_error:
+                # Check if it's a cuDNN error during transcription
+                if "cudnn" in str(transcribe_error).lower():
+                    logger.warning(f"cuDNN error during transcription, reinitializing models on CPU: {transcribe_error}")
+                    # Reinitialize all models on CPU
+                    models.clear()
+                    global server_stats
+                    server_stats["gpu_available"] = False
+                    
+                    model_configs = {
+                        "tiny": {"size": "tiny"},
+                        "base": {"size": "base"}, 
+                        "small": {"size": "small"},
+                        "medium": {"size": "medium"}
+                    }
+                    
+                    for name, config in model_configs.items():
+                        models[name] = WhisperModel(config["size"], device="cpu", compute_type="int8")
+                    
+                    # Retry transcription with CPU model
+                    whisper_model = models[model]
+                    segments, info = whisper_model.transcribe(
+                        tmp_file_path,
+                        language=language,
+                        task=task,
+                        beam_size=5 if model in ["small", "medium"] else 3,
+                        temperature=0.0,
+                        compression_ratio_threshold=2.4,
+                        no_speech_threshold=0.6,
+                        condition_on_previous_text=False
+                    )
+                    logger.info("✅ Successfully transcribed using CPU fallback")
+                else:
+                    raise transcribe_error
             
             # Extract text and metadata
             text = " ".join([segment.text for segment in segments]).strip()
@@ -341,21 +406,3 @@ async def transcribe_accurate(
         task="transcribe"
     )
 
-def main():
-    """Run the transcription server."""
-    print("🚀 Starting Jarvis GPU Transcription Server...")
-    print(f"🎮 GPU Available: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
-        print(f"🔥 GPU: {torch.cuda.get_device_name(0)}")
-    print()
-    
-    # Run server
-    uvicorn.run(
-        app,
-        host="0.0.0.0",  # Listen on all interfaces
-        port=8000,
-        log_level="info"
-    )
-
-if __name__ == "__main__":
-    main()

@@ -1,12 +1,12 @@
 # Jarvis GPU Transcription Server - Docker Image
 # For NVIDIA GPU-accelerated transcription
 
-FROM nvidia/cuda:11.8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV CUDA_VISIBLE_DEVICES=0
+ENV CUDA_VISIBLE_DEVICES=""
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -30,7 +30,7 @@ ENV PATH="/app/venv/bin:$PATH"
 
 # Install PyTorch with CUDA support
 RUN pip install --upgrade pip && \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Install other requirements
 RUN pip install -r requirements.txt
@@ -46,4 +46,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the server
-CMD ["python", "transcription_server.py"]
+CMD ["uvicorn", "transcription_server:app", "--host", "0.0.0.0", "--port", "8000"]

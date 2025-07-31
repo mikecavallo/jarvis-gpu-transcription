@@ -110,13 +110,25 @@ model_configs = {
 
 ## 🐳 Docker Support
 
+### GPU Mode (Recommended)
 ```bash
 # Build Docker image
-docker build -t jarvis-transcription .
+docker build -t transcription-server .
 
-# Run with GPU support
-docker run --gpus all -p 8000:8000 jarvis-transcription
+# Run with GPU support (if cuDNN compatible)
+docker run --gpus all -p 8000:8000 transcription-server
 ```
+
+### CPU Mode (Stable Fallback)
+```bash
+# Build Docker image
+docker build -t transcription-server .
+
+# Run in CPU-only mode (cuDNN compatibility issues)
+docker run --rm -p 8000:8000 -e CUDA_VISIBLE_DEVICES="" transcription-server
+```
+
+**Note:** Due to cuDNN 9 compatibility requirements in faster-whisper, the Docker container defaults to CPU mode for stability. This provides reliable transcription across all systems, though slower than GPU mode.
 
 ## 🔗 Integration
 
@@ -185,8 +197,22 @@ python -c "import torch; print(torch.cuda.is_available())"
 
 # Reinstall PyTorch with CUDA
 pip uninstall torch torchvision torchaudio
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
+
+### cuDNN Compatibility Issues
+If you encounter `libcudnn_ops.so` errors, the server automatically falls back to CPU mode:
+
+```bash
+# Force CPU mode explicitly
+export CUDA_VISIBLE_DEVICES=""
+python transcription_server.py
+
+# Or use Docker CPU mode
+docker run --rm -p 8000:8000 -e CUDA_VISIBLE_DEVICES="" transcription-server
+```
+
+The server includes automatic CPU fallback handling for maximum compatibility.
 
 ### Memory Issues
 ```bash
