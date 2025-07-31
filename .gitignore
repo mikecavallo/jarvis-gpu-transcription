@@ -1,0 +1,76 @@
+# Jarvis GPU Transcription Server - Git Ignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Audio files (test data)
+*.wav
+*.mp3
+*.flac
+*.m4a
+audio_samples/
+
+# Model cache
+.cache/
+models/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Docker
+.docker/
+
+# Service files (generated)
+jarvis-transcription.service
+
+# Test files
+test_audio.*
+sample.*

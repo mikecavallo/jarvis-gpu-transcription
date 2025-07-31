@@ -1,0 +1,27 @@
+# Jarvis GPU Transcription Server Dependencies
+# For Ubuntu systems with NVIDIA GPUs
+
+# Core server framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# GPU-accelerated transcription
+faster-whisper==0.10.0
+
+# PyTorch with CUDA support (install separately with CUDA index)
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Audio and data processing
+numpy>=1.24.0
+
+# HTTP client for testing
+requests>=2.31.0
+
+# System monitoring (optional)
+psutil>=5.9.0
+
+# Additional audio format support
+ffmpeg-python>=0.2.0
