@@ -50,24 +50,17 @@ source venv/bin/activate
 echo "📦 Upgrading pip..."
 pip install --upgrade pip
 
-# Install PyTorch with CUDA support first
-echo "🔥 Installing PyTorch with CUDA support..."
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-
-# Install other requirements
+# Install dependencies
 echo "📦 Installing dependencies..."
 pip install -r requirements.txt
 
 # Test GPU availability
 echo "🧪 Testing GPU availability..."
 python3 -c "
-import torch
-print(f'CUDA Available: {torch.cuda.is_available()}')
-if torch.cuda.is_available():
-    print(f'GPU: {torch.cuda.get_device_name(0)}')
-    print(f'GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB')
-else:
-    print('GPU not available - will use CPU')
+import ctranslate2
+n = ctranslate2.get_cuda_device_count()
+print(f'CUDA devices visible to CTranslate2: {n}')
+print('GPU will be used' if n else 'GPU not available - will use CPU')
 "
 
 # Create startup script
@@ -85,7 +78,7 @@ source venv/bin/activate
 export CUDA_VISIBLE_DEVICES=0  # Use first GPU
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
-# Start server
+# Start server (host/port/API key via TRANSCRIPTION_* env vars)
 python transcription_server.py
 EOF
 

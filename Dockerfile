@@ -6,7 +6,6 @@ FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV CUDA_VISIBLE_DEVICES=""
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -28,12 +27,8 @@ COPY requirements.txt .
 RUN python3 -m venv venv
 ENV PATH="/app/venv/bin:$PATH"
 
-# Install PyTorch with CUDA support
-RUN pip install --upgrade pip && \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Install other requirements
-RUN pip install -r requirements.txt
+# Install dependencies (CTranslate2 wheels bundle CUDA kernels; no PyTorch needed)
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy application code
 COPY transcription_server.py .

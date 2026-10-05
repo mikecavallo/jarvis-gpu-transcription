@@ -1,11 +1,9 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-faster-whisper==0.10.0
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0
-numpy>=1.24.0
+python-multipart==0.0.6
+faster-whisper==1.0.3
+# faster-whisper 1.0.3 imports requests without declaring it
 requests>=2.31.0
-psutil>=5.9.0
-ffmpeg-python>=0.2.0
-python-multipart
+# 4.4.x is the last CTranslate2 line built against cuDNN 8, which matches the
+# CUDA 12 + cuDNN 8 Docker base image. 4.5+ requires cuDNN 9.
+ctranslate2==4.4.0
