@@ -74,3 +74,6 @@ jarvis-transcription.service
 # Test files
 test_audio.*
 sample.*
+# Test/tool caches
+.pytest_cache/
+.ruff_cache/

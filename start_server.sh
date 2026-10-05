@@ -11,4 +11,4 @@ export CUDA_VISIBLE_DEVICES=0  # Use first GPU
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
 # Start server
-uvicorn transcription_server:app --host 0.0.0.0 --port 8000
+python transcription_server.py "$@"
